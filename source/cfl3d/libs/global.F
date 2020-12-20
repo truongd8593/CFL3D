@@ -208,7 +208,8 @@ c
       common /curvat/ isarc2d,sarccr3,ieasmcc2d,isstrc,sstrc_crc,
      .        isar,crot,isarc3d
       common /mms/ iexact_trunc,iexact_disc,iexact_ring
-      common /constit/ i_nonlin,c_nonlin,snonlin_lim
+      common /constit/ i_nonlin,c_nonlin,snonlin_lim,i_tauijs,i_qcr2000,
+     .                 i_qcr2013,i_qcr2013v
       common /easmlim/ cmulim
       common /ivals/ p0,rho0,c0,u0,v0,w0,et0,h0,pt0,rhot0,qiv(5),
      .        tur10(7)
@@ -218,8 +219,11 @@ c
      .                    sa_ct4,sa_cb1,sa_cb2,sa_sigma,sa_karman
       common /specialtop_kmax1001/ i_specialtop_kmax1001,
      .        a_specialtop_kmax1001,xc_specialtop_kmax1001,
-     .        sig_specialtop_kmax1001,vtp_specialtop_kmax1001
-      common /reystressmodel/ issglrrw2012,i_sas_rsm
+     .        sig_specialtop_kmax1001,vtp_specialtop_kmax1001,
+     .        wc_specialtop_kmax1001,fac_specialtop_kmax1001,
+     .        cc_specialtop_kmax1001,xerf_specialtop_kmax1001,
+     .        sigerf_specialtop_kmax1001
+      common /reystressmodel/ issglrrw2012,i_sas_rsm,i_yapterm
       common /iupdate/ iupdatemean
 c
       pi = 4.0*atan(1.0)
@@ -525,10 +529,6 @@ c   Check for SARC & EASMCC models
       end if
       if (isarc3d .eq. 1 .and. isarc2d .eq. 1) then
         write(iunit11,'('' ERROR: cannot have isarc3d and isarc2d=1'')')
-        call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
-      end if
-      if ((isarc2d.eq.1 .or. isarc3d.eq.1) .and. i_saneg.ne.0) then
-        write(iunit11,'('' ERROR: cannot have SARC on and SA-neg'')')
         call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
       end if
 c
@@ -1002,6 +1002,10 @@ c     Need to check for keywords that do not work for ivmx=72:
      .    '' ivisc=72 - it is ALWAYS full NS'')')
         write(iunit11,'(''          (but diffusion'',
      .    '' terms in turb eqns are still thin-layer)'')')
+        if (ifullns .ne. 0) then
+          write(iunit11,'('' ERROR: ifullns must be 0 for ivisc=72'')')
+          call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
+        end if
         if (edvislim .ne. 1.e10) then
           write(iunit11,'('' WARNING: keyword edvislim has influence'',
      .      '' only in turb heat flux in energy eqn for ivisc=72'')')
@@ -1078,6 +1082,70 @@ c
         call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
       end if
 c
+      if (i_tauijs .eq. 1) then
+        if (ivmx .lt. 70 .and. ngrid .ne. 1) then
+          write(iunit11,'('' ERROR: across-boundary BCs not correct'',
+     .      '' for i_tauijs=1, ivmx<70;'',
+     .      '' cannot use multiple zones currently'')')
+          call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
+        end if
+        if (ifullns .ne. 0) then
+          write(iunit11,'('' ERROR: ifullns must be 0 when'',
+     .      '' i_tauijs=1'')')
+          call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
+        end if
+        if (ivmx .eq. 11 .or. ivmx .eq. 12 .or. ivmx .eq. 13 .or.
+     .      ivmx .eq. 14) then
+          write(iunit11,'('' i_tauijs=1 cannot be used with'',
+     .    '' ivisc=11,12,13,14'')')
+          call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
+        end if
+        if (i_nonlin .ne. 0) then
+          write(iunit11,'('' i_tauijs=1 cannot be used with'',
+     .    '' i_nonlin'')')
+          call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
+        end if
+      end if
+c
+      if (i_qcr2000 .eq. 1 .and. i_tauijs .ne. 1) then
+        write(iunit11,'('' i_qcr2000 must be used with'',
+     .    '' i_tauijs=1'')')
+          call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
+      end if
+      if (i_qcr2013 .eq. 1 .and. i_tauijs .ne. 1) then
+        write(iunit11,'('' i_qcr2013 must be used with'',
+     .    '' i_tauijs=1'')')
+          call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
+      end if
+      if (i_qcr2013v .eq. 1 .and. i_tauijs .ne. 1) then
+        write(iunit11,'('' i_qcr2013v must be used with'',
+     .    '' i_tauijs=1'')')
+          call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
+      end if
+      if (i_qcr2000 .eq. 1 .and. i_qcr2013 .eq. 1) then
+        write(iunit11,'('' cannot have both i_qcr2000=1'',
+     .    '' and i_qcr2013=1'')')
+          call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
+      end if
+      if (i_qcr2000 .eq. 1 .and. i_qcr2013v .eq. 1) then
+        write(iunit11,'('' cannot have both i_qcr2000=1'',
+     .    '' and i_qcr2013v=1'')')
+          call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
+      end if
+      if (i_qcr2013 .eq. 1 .and. i_qcr2013v .eq. 1) then
+        write(iunit11,'('' cannot have both i_qcr2013=1'',
+     .    '' and i_qcr2013v=1'')')
+          call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
+      end if
+      if (i_qcr2013 .eq. 1 .and. ivmx .ne. 5) then
+        write(iunit11,'('' i_qcr2013 is only usable with SA model'')')
+          call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
+      end if
+      if (i_qcr2013v .eq. 1 .and. ivmx .ne. 5) then
+        write(iunit11,'('' i_qcr2013v is only usable with SA model'')')
+          call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
+      end if
+c
       if ((ivmx .eq. 8 .or. ivmx .eq. 9 .or. ivmx .eq. 13 .or.
      .     ivmx .eq. 14) .and. real(cmulim) .gt. .04) then
         write(iunit11,'('' error... cmulim set too high'')')
@@ -1123,6 +1191,8 @@ c
       end if
 c   check usage of full N-S
       if (ifullns .ne. 0) then
+        write(iunit11,'('' Note that even with ifullns=1, diffusion'',
+     .    '' terms in turb eqns are still thin-layer)'')')
         if (i2d .eq. 0 .and. idim .gt. 2 .and. (ivisc(1).eq.0 .or. 
      .      ivisc(2).eq.0 .or. ivisc(3).eq.0)) then
           write(iunit11,'('' WARNING: When using full N-S in 3-D, '',
@@ -1603,10 +1673,10 @@ c
           call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
       end if
       if ((abs(ibctyp) .eq. 2004 .or. abs(ibctyp) .eq. 2014 .or.
-     .     abs(ibctyp) .eq. 2024 .or.
+     .     abs(ibctyp) .eq. 2024 .or. abs(ibctyp) .eq. 2034 .or.
      .     abs(ibctyp) .eq. 2016) .and. iviscg(nbl,1) .eq. 0) then
        write(iunit11,'('' stopping...must have ivisc(i) > 0 if'')')
-       write(iunit11,'(''   bc2004/14/24/16 is being used on'',
+       write(iunit11,'(''   bc2004/14/24/34/16 is being used on'',
      .   '' an i-face'')')
           call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
       end if
@@ -1655,7 +1725,8 @@ c
       mfoseg = 0
       if(abs(ibctyp).eq.2004 .or. abs(ibctyp).eq.1005 .or.
      .   abs(ibctyp).eq.1006 .or. abs(ibctyp).eq.2014 .or.
-     .   abs(ibctyp).eq.2024 .or. abs(ibctyp).eq.2016) mfoseg = 1
+     .   abs(ibctyp).eq.2024 .or. abs(ibctyp).eq.2034 .or.
+     .   abs(ibctyp).eq.2016) mfoseg = 1
       ifoseg = ifoseg*mfoseg
       nseg = abs(nseg)
       if (ndata.gt.0) then
@@ -1873,10 +1944,10 @@ c
           call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
       end if
       if ((abs(ibctyp) .eq. 2004 .or. abs(ibctyp) .eq. 2014 .or.
-     .     abs(ibctyp) .eq. 2024 .or.
+     .     abs(ibctyp) .eq. 2024 .or. abs(ibctyp) .eq. 2034 .or.
      .     abs(ibctyp) .eq. 2016) .and. iviscg(nbl,1) .eq. 0) then
        write(iunit11,'('' stopping...must have ivisc(i) > 0 if'')')
-       write(iunit11,'(''   bc2004/14/24/16 is being used on'',
+       write(iunit11,'(''   bc2004/14/24/34/16 is being used on'',
      .   '' an i-face'')')
           call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
       end if
@@ -1921,7 +1992,8 @@ c
       mfoseg = 0
       if(abs(ibctyp).eq.2004 .or. abs(ibctyp).eq.1005 .or.
      .   abs(ibctyp).eq.1006 .or. abs(ibctyp).eq.2014 .or.
-     .   abs(ibctyp).eq.2024 .or. abs(ibctyp).eq.2016) mfoseg = 1
+     .   abs(ibctyp).eq.2024 .or. abs(ibctyp).eq.2034 .or.
+     .   abs(ibctyp).eq.2016) mfoseg = 1
       ifoseg = ifoseg*mfoseg
       nseg = abs(nseg)
       if (ndata.gt.0) then
@@ -2127,10 +2199,10 @@ c
           call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
       end if
       if ((abs(jbctyp) .eq. 2004 .or. abs(jbctyp) .eq. 2014 .or.
-     .     abs(jbctyp) .eq. 2024 .or.
+     .     abs(jbctyp) .eq. 2024 .or. abs(jbctyp) .eq. 2034 .or.
      .     abs(jbctyp) .eq. 2016) .and. iviscg(nbl,2) .eq. 0) then
        write(iunit11,'('' stopping...must have ivisc(j) > 0 if'')')
-       write(iunit11,'(''   bc2004/14/24/16 is being used on'',
+       write(iunit11,'(''   bc2004/14/24/34/16 is being used on'',
      .   '' a j-face'')')
           call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
       end if
@@ -2175,7 +2247,8 @@ c
       mfoseg = 0
       if(abs(jbctyp).eq.2004 .or. abs(jbctyp).eq.1005 .or.
      .   abs(jbctyp).eq.1006 .or. abs(jbctyp).eq.2014 .or.
-     .   abs(jbctyp).eq.2024 .or. abs(jbctyp).eq.2016) mfoseg = 1
+     .   abs(jbctyp).eq.2024 .or. abs(jbctyp).eq.2034 .or.
+     .   abs(jbctyp).eq.2016) mfoseg = 1
       jfoseg = jfoseg*mfoseg
       nseg = abs(nseg)
       if (ndata.gt.0) then
@@ -2380,10 +2453,10 @@ c
           call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
       end if
       if ((abs(jbctyp) .eq. 2004 .or. abs(jbctyp) .eq. 2014 .or.
-     .     abs(jbctyp) .eq. 2024 .or.
+     .     abs(jbctyp) .eq. 2024 .or. abs(jbctyp) .eq. 2034 .or.
      .     abs(jbctyp) .eq. 2016) .and. iviscg(nbl,2) .eq. 0) then
        write(iunit11,'('' stopping...must have ivisc(j) > 0 if'')')
-       write(iunit11,'(''   bc2004/14/24/16 is being used on'',
+       write(iunit11,'(''   bc2004/14/24/34/16 is being used on'',
      .   '' a j-face'')')
           call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
       end if
@@ -2428,7 +2501,8 @@ c
       mfoseg = 0
       if(abs(jbctyp).eq.2004 .or. abs(jbctyp).eq.1005 .or.
      .   abs(jbctyp).eq.1006 .or. abs(jbctyp).eq.2014 .or.
-     .   abs(jbctyp).eq.2024 .or. abs(jbctyp).eq.2016) mfoseg = 1
+     .   abs(jbctyp).eq.2024 .or. abs(jbctyp).eq.2034 .or.
+     .   abs(jbctyp).eq.2016) mfoseg = 1
       jfoseg = jfoseg*mfoseg
       nseg = abs(nseg)
       if (ndata.gt.0) then
@@ -2632,10 +2706,10 @@ c
           call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
       end if
       if ((abs(kbctyp) .eq. 2004 .or. abs(kbctyp) .eq. 2014 .or.
-     .     abs(kbctyp) .eq. 2024 .or.
+     .     abs(kbctyp) .eq. 2024 .or. abs(kbctyp) .eq. 2034 .or.
      .     abs(kbctyp) .eq. 2016) .and. iviscg(nbl,3) .eq. 0) then
        write(iunit11,'('' stopping...must have ivisc(k) > 0 if'')')
-       write(iunit11,'(''   bc2004/14/24/16 is being used on'',
+       write(iunit11,'(''   bc2004/14/24/34/16 is being used on'',
      .   '' a k-face'')')
           call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
       end if
@@ -2680,7 +2754,8 @@ c
       mfoseg = 0
       if(abs(kbctyp).eq.2004 .or. abs(kbctyp).eq.1005 .or.
      .   abs(kbctyp).eq.1006 .or. abs(kbctyp).eq.2014 .or.
-     .   abs(kbctyp).eq.2024 .or. abs(kbctyp).eq.2016) mfoseg = 1
+     .   abs(kbctyp).eq.2024 .or. abs(kbctyp).eq.2034 .or.
+     .   abs(kbctyp).eq.2016) mfoseg = 1
       kfoseg = kfoseg*mfoseg
       nseg = abs(nseg)
       if (ndata.gt.0) then
@@ -2884,10 +2959,10 @@ c
           call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
       end if
       if ((abs(kbctyp) .eq. 2004 .or. abs(kbctyp) .eq. 2014 .or.
-     .     abs(kbctyp) .eq. 2024 .or.
+     .     abs(kbctyp) .eq. 2024 .or. abs(kbctyp) .eq. 2034 .or.
      .     abs(kbctyp) .eq. 2016) .and. iviscg(nbl,3) .eq. 0) then
        write(iunit11,'('' stopping...must have ivisc(k) > 0 if'')')
-       write(iunit11,'(''   bc2004/14/24/16 is being used on'',
+       write(iunit11,'(''   bc2004/14/24/34/16 is being used on'',
      .   '' a k-face'')')
           call termn8(myid,ierrflg,ibufdim,nbuf,bou,nou)
       end if
@@ -2932,7 +3007,8 @@ c
       mfoseg = 0
       if(abs(kbctyp).eq.2004 .or. abs(kbctyp).eq.1005 .or.
      .   abs(kbctyp).eq.1006 .or. abs(kbctyp).eq.2014 .or.
-     .   abs(kbctyp).eq.2024 .or. abs(kbctyp).eq.2016) mfoseg = 1
+     .   abs(kbctyp).eq.2024 .or. abs(kbctyp).eq.2034 .or.
+     .   abs(kbctyp).eq.2016) mfoseg = 1
       kfoseg = kfoseg*mfoseg
       nseg = abs(nseg)
       if (ndata.gt.0) then
@@ -3113,6 +3189,7 @@ c
      .          abs(ibcinfo(nbl,nseg,1,1)).eq.1006 .or.
      .          abs(ibcinfo(nbl,nseg,1,1)).eq.2014 .or.
      .          abs(ibcinfo(nbl,nseg,1,1)).eq.2024 .or.
+     .          abs(ibcinfo(nbl,nseg,1,1)).eq.2034 .or.
      .          abs(ibcinfo(nbl,nseg,1,1)).eq.2016) then
                 ii = 1
                 nplt3dtmp = nplt3dtmp + 1
@@ -3135,6 +3212,7 @@ c
      .          abs(ibcinfo(nbl,nseg,1,2)).eq.1006 .or.
      .          abs(ibcinfo(nbl,nseg,1,2)).eq.2014 .or.
      .          abs(ibcinfo(nbl,nseg,1,2)).eq.2024 .or.
+     .          abs(ibcinfo(nbl,nseg,1,2)).eq.2034 .or.
      .          abs(ibcinfo(nbl,nseg,1,2)).eq.2016) then
                 ii = idim
                 nplt3dtmp = nplt3dtmp + 1
@@ -3157,6 +3235,7 @@ c
      .          abs(jbcinfo(nbl,nseg,1,1)).eq.1006 .or.
      .          abs(jbcinfo(nbl,nseg,1,1)).eq.2014 .or.
      .          abs(jbcinfo(nbl,nseg,1,1)).eq.2024 .or.
+     .          abs(jbcinfo(nbl,nseg,1,1)).eq.2034 .or.
      .          abs(jbcinfo(nbl,nseg,1,1)).eq.2016) then
                 jj = 1
                 nplt3dtmp = nplt3dtmp + 1
@@ -3179,6 +3258,7 @@ c
      .          abs(jbcinfo(nbl,nseg,1,2)).eq.1006 .or.
      .          abs(jbcinfo(nbl,nseg,1,2)).eq.2014 .or.
      .          abs(jbcinfo(nbl,nseg,1,2)).eq.2024 .or.
+     .          abs(jbcinfo(nbl,nseg,1,2)).eq.2034 .or.
      .          abs(jbcinfo(nbl,nseg,1,2)).eq.2016) then
                 jj = jdim
                 nplt3dtmp = nplt3dtmp + 1
@@ -3201,6 +3281,7 @@ c
      .          abs(kbcinfo(nbl,nseg,1,1)).eq.1006 .or.
      .          abs(kbcinfo(nbl,nseg,1,1)).eq.2014 .or.
      .          abs(kbcinfo(nbl,nseg,1,1)).eq.2024 .or.
+     .          abs(kbcinfo(nbl,nseg,1,1)).eq.2034 .or.
      .          abs(kbcinfo(nbl,nseg,1,1)).eq.2016) then
                 kk = 1
                 nplt3dtmp = nplt3dtmp + 1
@@ -3223,6 +3304,7 @@ c
      .          abs(kbcinfo(nbl,nseg,1,2)).eq.1006 .or.
      .          abs(kbcinfo(nbl,nseg,1,2)).eq.2014 .or.
      .          abs(kbcinfo(nbl,nseg,1,2)).eq.2024 .or.
+     .          abs(kbcinfo(nbl,nseg,1,2)).eq.2034 .or.
      .          abs(kbcinfo(nbl,nseg,1,2)).eq.2016) then
                 kk = kdim
                 nplt3dtmp = nplt3dtmp + 1
@@ -7368,6 +7450,7 @@ c
      .     nbcinfo(nbl,nseg,1,n3).eq.1006.or.
      .     nbcinfo(nbl,nseg,1,n3).eq.2014.or.
      .     nbcinfo(nbl,nseg,1,n3).eq.2024.or.
+     .     nbcinfo(nbl,nseg,1,n3).eq.2034.or.
      .     nbcinfo(nbl,nseg,1,n3).eq.2016) then
            if(nbcinfo(nbl,nseg,n1,n3).lt.ncs(nbl,iseg).and.      
      .        nbcinfo(nbl,nseg,n2,n3).ge.ncs(nbl,iseg)) 

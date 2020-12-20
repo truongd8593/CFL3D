@@ -63,6 +63,8 @@ c
       common /reyue/ reue,tinf,ivisc(3)
       common /sklton/ isklton
       common /twod/ i2d
+      common /constit/ i_nonlin,c_nonlin,snonlin_lim,i_tauijs,i_qcr2000,
+     .                 i_qcr2013,i_qcr2013v
       REAL :: coef_eddy
 c
 c******************************************************************************
@@ -71,6 +73,7 @@ c******************************************************************************
 c
       coef_eddy = 1.0
       if(ivisc(2)>=70) coef_eddy = 0.0
+      if(i_tauijs .eq. 1) coef_eddy=0.
       kdim1 = kdim-1
       jdim1 = jdim-1
       idim1 = idim-1

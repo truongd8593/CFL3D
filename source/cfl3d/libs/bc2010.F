@@ -100,7 +100,7 @@ c     if freestream values are to be used (itrflg1 = 0); the check
 c     assumes if the first point has been set, all points have been
 c
       itrflg1 = 0
-      if (real(bcdata(1,1,ip,5)) .ne. 0.) itrflg1 = 1
+      if (real(bcdata(1,1,ip,5)) .gt. -1.e10) itrflg1 = 1
 c
       j=1
       do 300 i=ista,iend1
@@ -134,17 +134,17 @@ c     Note: xmach_local should be < 1 (not checking here)
       qb = 2.*rminus
       qc = 0.5*gm1*rminus**2 - gm1*hti
       a_radical = qb**2 - 4.*qa*qc
-      if (a_radical .gt. 0.) then
+      if (real(a_radical) .gt. 0.) then
         a_plus = -qb/(2.*qa)+sqrt(a_radical)/(2.*qa)
         a_minus = -qb/(2.*qa)-sqrt(a_radical)/(2.*qa)
-      else if (a_radical .lt. 0.) then
+      else if (real(a_radical) .lt. 0.) then
         a_plus = ai
         a_minus = ai
       else
         a_plus = -qb/(2.*qa)
         a_minus = -qb/(2.*qa)
       end if
-      if (a_plus .gt. a_minus) then
+      if (real(a_plus) .gt. real(a_minus)) then
         a_new = a_plus
       else
         a_new = a_minus
@@ -212,7 +212,7 @@ c     if freestream values are to be used (itrflg1 = 0); the check
 c     assumes if the first point has been set, all points have been
 c
       itrflg1 = 0
-      if (real(bcdata(1,1,ip,5)) .ne. 0.) itrflg1 = 1
+      if (real(bcdata(1,1,ip,5)) .gt. -1.e10) itrflg1 = 1
 c
       j=jdim1
       do 310 i=ista,iend1
@@ -246,17 +246,17 @@ c     Note: xmach_local should be < 1 (not checking here)
       qb = 2.*rminus
       qc = 0.5*gm1*rminus**2 - gm1*hti
       a_radical = qb**2 - 4.*qa*qc
-      if (a_radical .gt. 0.) then
+      if (real(a_radical) .gt. 0.) then
         a_plus = -qb/(2.*qa)+sqrt(a_radical)/(2.*qa)
         a_minus = -qb/(2.*qa)-sqrt(a_radical)/(2.*qa)
-      else if (a_radical .lt. 0.) then
+      else if (real(a_radical) .lt. 0.) then
         a_plus = ai
         a_minus = ai
       else
         a_plus = -qb/(2.*qa)
         a_minus = -qb/(2.*qa)
       end if
-      if (a_plus .gt. a_minus) then
+      if (real(a_plus) .gt. real(a_minus)) then
         a_new = a_plus
       else
         a_new = a_minus
@@ -324,7 +324,7 @@ c     if freestream values are to be used (itrflg1 = 0); the check
 c     assumes if the first point has been set, all points have been
 c
       itrflg1 = 0
-      if (real(bcdata(1,1,ip,5)) .ne. 0.) itrflg1 = 1
+      if (real(bcdata(1,1,ip,5)) .gt. -1.e10) itrflg1 = 1
 c
       k=1
       do 320 i=ista,iend1
@@ -357,17 +357,17 @@ c     Note: xmach_local should be < 1 (not checking here)
       qb = 2.*rminus
       qc = 0.5*gm1*rminus**2 - gm1*hti
       a_radical = qb**2 - 4.*qa*qc
-      if (a_radical .gt. 0.) then
+      if (real(a_radical) .gt. 0.) then
         a_plus = -qb/(2.*qa)+sqrt(a_radical)/(2.*qa)
         a_minus = -qb/(2.*qa)-sqrt(a_radical)/(2.*qa)
-      else if (a_radical .lt. 0.) then
+      else if (real(a_radical) .lt. 0.) then
         a_plus = ai
         a_minus = ai
       else
         a_plus = -qb/(2.*qa)
         a_minus = -qb/(2.*qa)
       end if
-      if (a_plus .gt. a_minus) then
+      if (real(a_plus) .gt. real(a_minus)) then
         a_new = a_plus
       else
         a_new = a_minus
@@ -435,7 +435,7 @@ c     if freestream values are to be used (itrflg1 = 0); the check
 c     assumes if the first point has been set, all points have been
 c
       itrflg1 = 0
-      if (real(bcdata(1,1,ip,5)) .ne. 0.) itrflg1 = 1
+      if (real(bcdata(1,1,ip,5)) .gt. -1.e10) itrflg1 = 1
 c
       k=kdim1
       do 330 i=ista,iend1
@@ -470,17 +470,17 @@ c     Note: xmach_local should be < 1 (not checking here)
       qb = 2.*rminus
       qc = 0.5*gm1*rminus**2 - gm1*hti
       a_radical = qb**2 - 4.*qa*qc
-      if (a_radical .gt. 0.) then
+      if (real(a_radical) .gt. 0.) then
         a_plus = -qb/(2.*qa)+sqrt(a_radical)/(2.*qa)
         a_minus = -qb/(2.*qa)-sqrt(a_radical)/(2.*qa)
-      else if (a_radical .lt. 0.) then
+      else if (real(a_radical) .lt. 0.) then
         a_plus = ai
         a_minus = ai
       else
         a_plus = -qb/(2.*qa)
         a_minus = -qb/(2.*qa)
       end if
-      if (a_plus .gt. a_minus) then
+      if (real(a_plus) .gt. real(a_minus)) then
         a_new = a_plus
       else
         a_new = a_minus
@@ -548,7 +548,7 @@ c     if freestream values are to be used (itrflg1 = 0); the check
 c     assumes if the first point has been set, all points have been
 c
       itrflg1 = 0
-      if (real(bcdata(1,1,ip,5)) .ne. 0.) itrflg1 = 1
+      if (real(bcdata(1,1,ip,5)) .gt. -1.e10) itrflg1 = 1
 c
       i=1
       do 340 k=ksta,kend1
@@ -582,17 +582,17 @@ c     Note: xmach_local should be < 1 (not checking here)
       qb = 2.*rminus
       qc = 0.5*gm1*rminus**2 - gm1*hti
       a_radical = qb**2 - 4.*qa*qc
-      if (a_radical .gt. 0.) then
+      if (real(a_radical) .gt. 0.) then
         a_plus = -qb/(2.*qa)+sqrt(a_radical)/(2.*qa)
         a_minus = -qb/(2.*qa)-sqrt(a_radical)/(2.*qa)
-      else if (a_radical .lt. 0.) then
+      else if (real(a_radical) .lt. 0.) then
         a_plus = ai
         a_minus = ai
       else
         a_plus = -qb/(2.*qa)
         a_minus = -qb/(2.*qa)
       end if
-      if (a_plus .gt. a_minus) then
+      if (real(a_plus) .gt. real(a_minus)) then
         a_new = a_plus
       else
         a_new = a_minus
@@ -660,7 +660,7 @@ c     if freestream values are to be used (itrflg1 = 0); the check
 c     assumes if the first point has been set, all points have been
 c
       itrflg1 = 0
-      if (real(bcdata(1,1,ip,5)) .ne. 0.) itrflg1 = 1
+      if (real(bcdata(1,1,ip,5)) .gt. -1.e10) itrflg1 = 1
 c
       i=idim1
       do 350 k=ksta,kend1
@@ -693,17 +693,17 @@ c     Note: xmach_local should be < 1 (not checking here)
       qb = 2.*rminus
       qc = 0.5*gm1*rminus**2 - gm1*hti
       a_radical = qb**2 - 4.*qa*qc
-      if (a_radical .gt. 0.) then
+      if (real(a_radical) .gt. 0.) then
         a_plus = -qb/(2.*qa)+sqrt(a_radical)/(2.*qa)
         a_minus = -qb/(2.*qa)-sqrt(a_radical)/(2.*qa)
-      else if (a_radical .lt. 0.) then
+      else if (real(a_radical) .lt. 0.) then
         a_plus = ai
         a_minus = ai
       else
         a_plus = -qb/(2.*qa)
         a_minus = -qb/(2.*qa)
       end if
-      if (a_plus .gt. a_minus) then
+      if (real(a_plus) .gt. real(a_minus)) then
         a_new = a_plus
       else
         a_new = a_minus

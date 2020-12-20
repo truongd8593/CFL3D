@@ -440,7 +440,7 @@ CONTAINS
        ux, &    ! velocity gradients
        sj,sk,si,vol,vj0,vk0,vi0, &         ! metrics
        q,qj0,qk0,qi0,dtj,vist3d,level,icyc,sumn,negn, &
-       zksav2,smin,x,y,z,nbl,issglrrw2012,i_sas_rsm)
+       zksav2,smin,x,y,z,nbl,issglrrw2012,i_sas_rsm,i_yapterm)
 
     ! --- input ---
     INTEGER,INTENT(in) :: jdim,kdim,idim,myid,myhost,nummem
@@ -459,7 +459,7 @@ CONTAINS
          vi0(jdim,kdim,4)
     REAL,INTENT(in) :: x(jdim,kdim,idim),y(jdim,kdim,idim), &
          z(jdim,kdim,idim)
-    INTEGER,intent(in) :: nbl,issglrrw2012,i_sas_rsm
+    INTEGER,intent(in) :: nbl,issglrrw2012,i_sas_rsm,i_yapterm
 
     REAL, INTENT(inout)::turb(jdim,kdim,idim,nummem),vist3d(jdim,kdim,idim),&
          zksav2(jdim,kdim,idim,2*nummem), smin(jdim-1,kdim-1,idim-1)
@@ -607,7 +607,7 @@ CONTAINS
        call kws_dbij_dxx(jdim,kdim,idim,nummem,dbijdx,sj,sk,si,vol,dbijdxx)
        CALL get_source(jdim,kdim,idim,nummem,q,qj0,qk0,qi0,turre,tke,blend,bij,omega,&
             sj,sk,si,vol,vj0,vk0,vi0,ux,fmu,source,rhs,d,zksav2,timestep,dbijdxx,&
-            smin,issglrrw2012,x,y,z,nbl,icyc,ncyc1,i_sas_rsm)
+            smin,issglrrw2012,x,y,z,nbl,icyc,ncyc1,i_sas_rsm,i_yapterm)
 
        al = 0;ar= 0;bl = 0; br=0
        if (issglrrw2012==1 .or. issglrrw2012==2 .or. issglrrw2012==6) then
@@ -672,8 +672,9 @@ CONTAINS
        qj0,qk0,qi0, &
        turre,tke,blend,bb,omega,&
        sj,sk,si,vol,vj0,vk0,vi0,ux,fmu,source,rhs,d,zksav,timestep,dbijdxx,&
-       smin,issglrrw2012,x,y,z,nbl,icyc,ncyc1,i_sas_rsm)
-    INTEGER,INTENT(in) :: jdim,kdim,idim,nummem,issglrrw2012,nbl,icyc,ncyc1(5),i_sas_rsm
+       smin,issglrrw2012,x,y,z,nbl,icyc,ncyc1,i_sas_rsm,i_yapterm)
+    INTEGER,INTENT(in) :: jdim,kdim,idim,nummem,issglrrw2012,nbl,icyc,ncyc1(5)
+    INTEGER,INTENT(in) :: i_sas_rsm,i_yapterm
     real, intent(in) :: smin(jdim-1,kdim-1,idim-1)
     REAL,INTENT(in) :: q(jdim,kdim,idim,5),&
          omega(0:jdim,0:kdim,0:idim,3), &
@@ -772,8 +773,10 @@ CONTAINS
     integer,save:: ivisited=0
     ! -- for time step --
     real :: dtmp,cutoff
+    ! -- other --
     real :: c3_e_use,c1star_e_use
     real :: yapterm,xle,terma
+    real :: chiterm,termb,flsc
 
     ! velocity 2nd derivatives
     REAL, ALLOCATABLE, DIMENSION(:,:,:,:) :: vx
@@ -1054,7 +1057,7 @@ CONTAINS
 !  1: 1,1    2: 2,2   3: 3,3   4: 1,2   5: 2,3   6: 1,3
 !
              if (issglrrw2012==7) then
-               c3_e_use=0.45
+               c3_e_use=0.53
                c1star_e_use=0.0
              else
                c3_e_use=c3_e
@@ -1188,12 +1191,21 @@ CONTAINS
              end if
 
              yapterm=0.
-             if (issglrrw2012==7) then
+             if (i_yapterm == 1 .or. issglrrw2012==7) then
+!              Original trial:
+!              xle = 6.08581*0.41*abs(smin(j,k,i))  ! 6.08581=cmu**(-0.75)
+!              terma = sqrt(tke(j,k,i))*xma_re/(0.09*turre(j,k,i,7)*xle)
+!              yapterm=0.83*0.09*turre(j,k,i,7)**2*re_xma*  &
+!                      (terma-1.0)*terma**2
+!              yapterm=max(yapterm, 0.0)
+!              Eisfeld new:
                xle = 6.08581*0.41*abs(smin(j,k,i))  ! 6.08581=cmu**(-0.75)
                terma = sqrt(tke(j,k,i))*xma_re/(0.09*turre(j,k,i,7)*xle)
-               yapterm=0.83*0.09*turre(j,k,i,7)**2*re_xma*  &
-                       (terma-1.0)*terma**2
-               yapterm=max(yapterm, 0.0)
+               chiterm=(terma-1.0)*terma**2
+               chiterm=max(chiterm,0.0)
+               termb=31.0*(chiterm-1.0)
+               flsc=0.5*(1.+tanh(termb))
+               yapterm=flsc*dissip
              end if
 !            source(j,k,i,7)=(prod - dissip + sd_term )!*q(j,k,i,1)
              source(j,k,i,7)=(prod - dissip + sd_term + yapterm)!*q(j,k,i,1)
@@ -3753,6 +3765,7 @@ CONTAINS
 
     !local variables
     INTEGER :: i,j,k,m,n,ii,jj,kk,mm,ik,jk,im,jm,km,ij
+    INTEGER :: iii,jjj,kkk
   
     REAL:: diff(MAX(jdim,kdim,idim),nummem)
     REAL:: tijm(3,6),cijk(3,6),thalf(6)
@@ -3777,8 +3790,10 @@ CONTAINS
     DO i=1,idim-1
        DO k=1,kdim-1
           DO j=1,jdim
-             d_use       = blend(j,k,i)*d_o + (1.-blend(j,k,i))*d_e
-             sigma_w_use = blend(j,k,i)*sigma_w_o + (1.-blend(j,k,i))*sigma_w_e
+             jjj=j
+             jjj=MIN(jjj,jdim-1)
+             d_use       = blend(jjj,k,i)*d_o + (1.-blend(jjj,k,i))*d_e
+             sigma_w_use = blend(jjj,k,i)*sigma_w_o + (1.-blend(jjj,k,i))*sigma_w_e
              xmu_ave = 0.5*(fmu(j,k,i)+fmu(j-1,k,i))
              IF(j==1) THEN
                 rho_ave = 0.5*(qj0(k,i,1,1)+q(j,k,i,1))
@@ -3861,8 +3876,10 @@ CONTAINS
     DO i=1,idim-1
        DO j=1,jdim-1
           DO k=1,kdim
-             d_use       = blend(j,k,i)*d_o + (1.-blend(j,k,i))*d_e
-             sigma_w_use = blend(j,k,i)*sigma_w_o + (1.-blend(j,k,i))*sigma_w_e
+             kkk=k
+             kkk=MIN(kkk,kdim-1)
+             d_use       = blend(j,kkk,i)*d_o + (1.-blend(j,kkk,i))*d_e
+             sigma_w_use = blend(j,kkk,i)*sigma_w_o + (1.-blend(j,kkk,i))*sigma_w_e
              xmu_ave = 0.5*(fmu(j,k,i)+fmu(j,k-1,i))
              IF(k==1) THEN
                 rho_ave = 0.5*(qk0(j,i,1,1)+q(j,k,i,1))
@@ -3949,8 +3966,10 @@ CONTAINS
     DO k=1,kdim-1
        DO j=1,jdim-1
           DO i=1,idim
-             d_use       = blend(j,k,i)*d_o + (1.-blend(j,k,i))*d_e
-             sigma_w_use = blend(j,k,i)*sigma_w_o + (1.-blend(j,k,i))*sigma_w_e
+             iii=i
+             iii=MIN(iii,idim-1)
+             d_use       = blend(j,k,iii)*d_o + (1.-blend(j,k,iii))*d_e
+             sigma_w_use = blend(j,k,iii)*sigma_w_o + (1.-blend(j,k,iii))*sigma_w_e
              xmu_ave = 0.5*(fmu(j,k,i)+fmu(j,k,i-1))
              IF(i==1) THEN
                 rho_ave = 0.5*(qi0(j,k,1,1)+q(j,k,i,1))

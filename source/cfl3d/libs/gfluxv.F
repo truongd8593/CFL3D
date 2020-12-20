@@ -59,7 +59,8 @@ c
       common /mgrd/ levt,kode,mode,ncyc,mtt,icyc,level,lglobal
       common /reyue/ reue,tinf,ivisc(3)
       common /sklton/ isklton
-      common /constit/ i_nonlin,c_nonlin,snonlin_lim
+      common /constit/ i_nonlin,c_nonlin,snonlin_lim,i_tauijs,i_qcr2000,
+     .                 i_qcr2013,i_qcr2013v
       real :: coef_eddy
 c
 c******************************************************************************
@@ -74,6 +75,8 @@ c     Reynolds stress model)  - xxiao
 c
       coef_eddy = 1.0
       if(ivisc(2)>=70) coef_eddy=0
+      if(i_tauijs .eq. 1) coef_eddy=0.
+      ccr2=2.5
 c
       kdim1 = kdim-1
       jdim1 = jdim-1
@@ -99,6 +102,28 @@ c
       if (isklton.gt.0 .and. i.eq.1 .and. iadv.ge.0) then
          nou(1) = min(nou(1)+1,ibufdim)
          write(bou(nou(1),1),1442)
+         if (i_tauijs .eq. 1) then
+           nou(1) = min(nou(1)+1,ibufdim)
+           write(bou(nou(1),1),'(''      using tau_ij method'')')
+           nou(1) = min(nou(1)+1,ibufdim)
+           write(bou(nou(1),1),'(''(note: not done accurately at '',
+     +       ''boundaries for multiblock cases...'')')
+           nou(1) = min(nou(1)+1,ibufdim)
+           write(bou(nou(1),1),'(''currently one sided; need ux '',
+     +       ''derivs from across boundaries)'')')
+         end if
+         if (i_qcr2000 .eq. 1) then
+           nou(1) = min(nou(1)+1,ibufdim)
+           write(bou(nou(1),1),'(''      using QCR2000'')')
+         end if
+         if (i_qcr2013 .eq. 1) then
+           nou(1) = min(nou(1)+1,ibufdim)
+           write(bou(nou(1),1),'(''      using QCR2013 (limited)'')')
+         end if
+         if (i_qcr2013v .eq. 1) then
+           nou(1) = min(nou(1)+1,ibufdim)
+           write(bou(nou(1),1),'(''      using QCR2013-V'')')
+         end if
          if (ivisc(2).eq.11 .or. ivisc(2).eq.12 .or.
      +       ivisc(2).eq.13 .or. ivisc(2).eq.14 .or.
      +       i_nonlin.ne.0) then
@@ -469,6 +494,176 @@ cdir$ ivdep
       res(j,k,ii,l) = res(j,k,ii,l)+t(k+jkv,l)
  1030 continue
   400 continue
+c  Add tau_ij's for general method:
+      if (i_tauijs .eq. 1 .and. ivisc(2) .lt. 70) then
+        re=reue/xmach
+c   Add nonlinear terms to RHS
+        do 1196 ipl=1,npl
+          ii=i+ipl-1
+          jkv2=(ipl-1)*kdim1
+          do 1195 j=1,jdim
+            jkv=(j-1)*npl*kdim1 + (ipl-1)*kdim1
+            jp1=min(j+1,jdim-1)
+            jm2=max(j-2,1)
+            do 1194 k=1,kdim1
+              if (j.eq.1) then
+                rho=0.5*(q(j,k,ii,1)+qj0(k,ii,1,1))*(1.-wj0(k+jkv2,5))+
+     +              qj0(k,ii,1,1)*wj0(k+jkv2,5)
+                u=0.5*(q(j,k,ii,2)+qj0(k,ii,2,1))*(1.-wj0(k+jkv2,5))+
+     +              qj0(k,ii,2,1)*wj0(k+jkv2,5)
+                v=0.5*(q(j,k,ii,3)+qj0(k,ii,3,1))*(1.-wj0(k+jkv2,5))+
+     +              qj0(k,ii,3,1)*wj0(k+jkv2,5)
+                w=0.5*(q(j,k,ii,4)+qj0(k,ii,4,1))*(1.-wj0(k+jkv2,5))+
+     +              qj0(k,ii,4,1)*wj0(k+jkv2,5)
+             v3d=0.5*(vist3d(j,k,ii)+vj0(k,ii,1,1))*(1.-wj0(k+jkv2,5))+
+     +              vj0(k,ii,1,1)*wj0(k+jkv2,5)
+c               use 1st order interpolation at end
+                ux1=1.5*ux(j,k,ii,1)-0.5*ux(jp1,k,ii,1)
+                ux2=1.5*ux(j,k,ii,2)-0.5*ux(jp1,k,ii,2)
+                ux3=1.5*ux(j,k,ii,3)-0.5*ux(jp1,k,ii,3)
+                ux4=1.5*ux(j,k,ii,4)-0.5*ux(jp1,k,ii,4)
+                ux5=1.5*ux(j,k,ii,5)-0.5*ux(jp1,k,ii,5)
+                ux6=1.5*ux(j,k,ii,6)-0.5*ux(jp1,k,ii,6)
+                ux7=1.5*ux(j,k,ii,7)-0.5*ux(jp1,k,ii,7)
+                ux8=1.5*ux(j,k,ii,8)-0.5*ux(jp1,k,ii,8)
+                ux9=1.5*ux(j,k,ii,9)-0.5*ux(jp1,k,ii,9)
+              else if (j .eq. jdim) then
+                rho=0.5*(q(j-1,k,ii,1)+qj0(k,ii,1,3))*
+     +              (1.-wj0(k+jkv2,15))+
+     +              qj0(k,ii,1,3)*wj0(k+jkv2,15)
+                u=0.5*(q(j-1,k,ii,2)+qj0(k,ii,2,3))*(1.-wj0(k+jkv2,15))+
+     +              qj0(k,ii,2,3)*wj0(k+jkv2,15)
+                v=0.5*(q(j-1,k,ii,3)+qj0(k,ii,3,3))*(1.-wj0(k+jkv2,15))+
+     +              qj0(k,ii,3,3)*wj0(k+jkv2,15)
+                w=0.5*(q(j-1,k,ii,4)+qj0(k,ii,4,3))*(1.-wj0(k+jkv2,15))+
+     +              qj0(k,ii,4,3)*wj0(k+jkv2,15)
+           v3d=0.5*(vist3d(j-1,k,ii)+vj0(k,ii,1,3))*(1.-wj0(k+jkv2,15))+
+     +              vj0(k,ii,1,3)*wj0(k+jkv2,15)
+c               use 1st order interpolation at end
+                ux1=1.5*ux(j-1,k,ii,1)-0.5*ux(jm2,k,ii,1)
+                ux2=1.5*ux(j-1,k,ii,2)-0.5*ux(jm2,k,ii,2)
+                ux3=1.5*ux(j-1,k,ii,3)-0.5*ux(jm2,k,ii,3)
+                ux4=1.5*ux(j-1,k,ii,4)-0.5*ux(jm2,k,ii,4)
+                ux5=1.5*ux(j-1,k,ii,5)-0.5*ux(jm2,k,ii,5)
+                ux6=1.5*ux(j-1,k,ii,6)-0.5*ux(jm2,k,ii,6)
+                ux7=1.5*ux(j-1,k,ii,7)-0.5*ux(jm2,k,ii,7)
+                ux8=1.5*ux(j-1,k,ii,8)-0.5*ux(jm2,k,ii,8)
+                ux9=1.5*ux(j-1,k,ii,9)-0.5*ux(jm2,k,ii,9)
+              else
+                rho=0.5*(q(j,k,ii,1)+q(j-1,k,ii,1))
+                u=0.5*(q(j,k,ii,2)+q(j-1,k,ii,2))
+                v=0.5*(q(j,k,ii,3)+q(j-1,k,ii,3))
+                w=0.5*(q(j,k,ii,4)+q(j-1,k,ii,4))
+                v3d=0.5*(vist3d(j,k,ii)+vist3d(j-1,k,ii))
+                ux1=0.5*(ux(j,k,ii,1)+ux(j-1,k,ii,1))
+                ux2=0.5*(ux(j,k,ii,2)+ux(j-1,k,ii,2))
+                ux3=0.5*(ux(j,k,ii,3)+ux(j-1,k,ii,3))
+                ux4=0.5*(ux(j,k,ii,4)+ux(j-1,k,ii,4))
+                ux5=0.5*(ux(j,k,ii,5)+ux(j-1,k,ii,5))
+                ux6=0.5*(ux(j,k,ii,6)+ux(j-1,k,ii,6))
+                ux7=0.5*(ux(j,k,ii,7)+ux(j-1,k,ii,7))
+                ux8=0.5*(ux(j,k,ii,8)+ux(j-1,k,ii,8))
+                ux9=0.5*(ux(j,k,ii,9)+ux(j-1,k,ii,9))
+              end if
+              s11=ux1
+              s22=ux5
+              s33=ux9
+              s11star=s11-((s11+s22+s33)/3.)
+              s22star=s22-((s11+s22+s33)/3.)
+              s33star=s33-((s11+s22+s33)/3.)
+              s12=0.5*(ux2+ux4)
+              s13=0.5*(ux3+ux7)
+              s23=0.5*(ux6+ux8)
+              w12=0.5*(ux2-ux4)
+              w13=0.5*(ux3-ux7)
+              w23=0.5*(ux6-ux8)
+c             ignoring -2/3*rho*k*delij term
+              t11=-2.0*v3d*s11star
+              t22=-2.0*v3d*s22star
+              t33=-2.0*v3d*s33star
+              t12=-2.0*v3d*s12
+              t13=-2.0*v3d*s13
+              t23=-2.0*v3d*s23
+              if (i_qcr2000 .eq. 1 .or. i_qcr2013 .eq. 1 .or.
+     +            i_qcr2013v .eq. 1) then
+                denom=sqrt(ux1*ux1 + ux2*ux2 + ux3*ux3 +
+     +                     ux4*ux4 + ux5*ux5 + ux6*ux6 +
+     +                     ux7*ux7 + ux8*ux8 + ux9*ux9)+1.e-20
+                o11=0.
+                o22=0.
+                o33=0.
+                o12=2.*w12/denom
+                o13=2.*w13/denom
+                o23=2.*w23/denom
+                t11p=t11-0.3*( o11*t11+o12*t12+o13*t13+
+     +                         o11*t11+o12*t12+o13*t13)
+                t22p=t22-0.3*(-o12*t12+o22*t22+o23*t23+
+     +                        -o12*t12+o22*t22+o23*t23)
+                t33p=t33-0.3*(-o13*t13-o23*t23+o33*t33+
+     +                        -o13*t13-o23*t23+o33*t33)
+                t12p=t12-0.3*( o11*t12+o12*t22+o13*t23+
+     +                        -o12*t11+o22*t12+o23*t13)
+                t13p=t13-0.3*( o11*t13+o12*t23+o13*t33+
+     +                        -o13*t11-o23*t12+o33*t13)
+                t23p=t23-0.3*(-o12*t13+o22*t23+o23*t33+
+     +                        -o13*t12-o23*t22+o33*t23)
+                t11=t11p
+                t22=t22p
+                t33=t33p
+                t12=t12p
+                t13=t13p
+                t23=t23p
+              end if
+              if (i_qcr2013 .eq. 1) then
+                xis2013 = s11star*s11star + s22star*s22star + 
+     +                    s33star*s33star +
+     +                    2.*s12*s12 + 2.*s13*s13 + 2.*s23*s23
+                s_mod = sqrt(2.*xis2013)
+                wis = 2.*w12*w12 + 2.*w13*w13 + 2.*w23*w23
+c               limiting is typically necessary
+                w_mod = sqrt(2.*wis)
+                s_mod = ccmin(s_mod , 1.2*w_mod)
+                t11=t11+ccr2*v3d*s_mod
+                t22=t22+ccr2*v3d*s_mod
+                t33=t33+ccr2*v3d*s_mod
+              end if
+              if (i_qcr2013v .eq. 1) then
+                wis = 2.*w12*w12 + 2.*w13*w13 + 2.*w23*w23
+                w_mod = sqrt(2.*wis)
+                t11=t11+ccr2*v3d*w_mod
+                t22=t22+ccr2*v3d*w_mod
+                t33=t33+ccr2*v3d*w_mod
+              end if
+              t(k+jkv,28)=xmre*(t(k+jkv,25)*t11+t(k+jkv,26)*t12+
+     +                          t(k+jkv,27)*t13)/t(k+jkv,15)
+              t(k+jkv,29)=xmre*(t(k+jkv,25)*t12+t(k+jkv,26)*t22+
+     +                          t(k+jkv,27)*t23)/t(k+jkv,15)
+              t(k+jkv,30)=xmre*(t(k+jkv,25)*t13+t(k+jkv,26)*t23+
+     +                          t(k+jkv,27)*t33)/t(k+jkv,15)
+              t(k+jkv,31)=xmre/t(k+jkv,15)*(
+     +           t(k+jkv,25)*(u*t11 + v*t12 + w*t13)
+     +          +t(k+jkv,26)*(u*t12 + v*t22 + w*t23)
+     +          +t(k+jkv,27)*(u*t13 + v*t23 + w*t33))
+ 1194       continue
+ 1195     continue
+ 1196   continue
+        do 1171 l=2,5
+        do 1170 izz=1,n
+c   Take positive derivative, because want negative of all above for correct
+c   sign (this term is going into -d/dxj(Gv) term)
+          t(izz,l)=t(izz+ks-1,l+26)-t(izz,l+26)
+ 1170   continue
+ 1171   continue
+        do 1168 ipl=1,npl
+          ii=i+ipl-1
+          do 1168 j=1,jdim1
+            jkv=(j-1)*kdim1*npl + (ipl-1)*kdim1+1
+            do 1168 l=2,5
+              do 1167 k=1,kdim1
+                res(j,k,ii,l)=res(j,k,ii,l)+t(k+jkv-1,l)
+ 1167         continue
+ 1168   continue
+      end if
 c  Add tau_ij's for RSMs:
       if (ivisc(2) .ge. 70) then
         re=reue/xmach
@@ -579,8 +774,8 @@ c   sign (this term is going into -d/dxj(Gv) term)
  8268   continue
       end if
 c
-      if((ivisc(2) .eq. 11 .or. ivisc(2) .eq. 12) .and.
-     .    level .ge. lglobal) then
+      if(i_tauijs .ne. 1 .and. (ivisc(2) .eq. 11 .or. ivisc(2) .eq. 12)
+     .    .and. level .ge. lglobal) then
 c f7=factor for determining whether it's a k-omega or k-epsilon formulation
 c   f7=0 for k-epsilon, 1 for k-omega
         f7=0.
@@ -898,8 +1093,8 @@ c   in k-eqn uses cmuc1*rho*k/omega or cmuc1*rho*k^2/epsilon)
             end if
  1275     continue
  1276   continue
-      else if((ivisc(2) .eq. 13 .or. ivisc(2) .eq. 14) .and.
-     +  level .ge. lglobal) then
+      else if(i_tauijs .ne. 1 .and. (ivisc(2) .eq. 13 .or.
+     +  ivisc(2) .eq. 14) .and. level .ge. lglobal) then
 c f7=factor for determining whether it's a k-omega or k-epsilon formulation
 c   f7=0 for k-epsilon, 1 for k-omega
         f7=0.
@@ -1266,7 +1461,8 @@ c   to get mulam, need mulam=t14*t15/xmre-t24
             end if
  1285     continue
  1286   continue
-      else if(i_nonlin .ne. 0 .and. level .ge. lglobal) then
+      else if(i_tauijs .ne. 1 .and. i_nonlin .ne. 0 .and. 
+     +        level .ge. lglobal) then
         re=reue/xmach
 c   Add nonlinear terms to RHS
         do 1296 ipl=1,npl
@@ -1517,7 +1713,8 @@ c
  1295     continue
  1296   continue
       end if
-      if((ivisc(2).eq.11.or.ivisc(2).eq.12.or.ivisc(2).eq.13.or.
+      if(i_tauijs .ne. 1 .and.
+     +   (ivisc(2).eq.11.or.ivisc(2).eq.12.or.ivisc(2).eq.13.or.
      +    ivisc(2).eq.14.or.i_nonlin.ne.0)
      +    .and.level.ge.lglobal) then
         do 1271 l=2,5

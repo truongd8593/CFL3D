@@ -15,7 +15,6 @@ link: lncode lnhead
 lncode:
 	@ echo "        linking source code"
 	ln -s $(CFLSRC_S)/*.F .
-	ln -s $(CFLSRC_S)/*.c .
 
 lnhead:
 
@@ -96,23 +95,18 @@ FSRC_LIBS = \
         my_flush.F     bc2016.F       gfluxv1.F      hfluxv1.F \
         ffluxv1.F      sijrate2d.F    threeeqn.F     lesdiag.F \
         histout_img.F  sijrate3d.F    foureqn.F      bc2026.F \
-        bc2019.F
+        bc2019.F       u_doubleprime.F bc2010.F
 
 FSRC_SPEC = addx.F
-
-CSRC_LIBS = bessel.c
 
 FOBJ_LIBS = $(FSRC_LIBS:.F=.o)
 
 FOBJ_SPEC = $(FSRC_SPEC:.F=.o)
 
-COBJ_LIBS = $(CSRC_LIBS:.c=.o)
-
 COMMONLIB = libcommon.a
 
-$(COMMONLIB): $(FSRC_LIBS) $(FOBJ_LIBS) $(FSRC_SPEC) $(FOBJ_SPEC) \
-	$(CSRC_LIBS) $(COBJ_LIBS)
-	ar $(AROPT) $(COMMONLIB) $(FOBJ_LIBS) $(FOBJ_SPEC) $(COBJ_LIBS) 
+$(COMMONLIB): $(FSRC_LIBS) $(FOBJ_LIBS) $(FSRC_SPEC) $(FOBJ_SPEC)
+	ar $(AROPT) $(COMMONLIB) $(FOBJ_LIBS) $(FOBJ_SPEC)
 	@$(RANLIB) $(COMMONLIB)
 
 $(FOBJ_LIBS): 
@@ -120,9 +114,6 @@ $(FOBJ_LIBS):
 
 $(FOBJ_SPEC):
 	$(FTN) $(CPPOPT) $(FFLAG_SPEC) -c $*.F
-
-$(COBJ_LIBS):
-	$(CC) $(CFLAG) -c $*.c
 
 $(EXEC): $(COMMONLIB)
 	@ echo "                                                              "
@@ -166,8 +157,4 @@ cleang:
 	@touch temp.F
 	-rm -f *.F
 
-cleanc:
-	@touch temp.c
-	-rm -f *.c
-
-scrub: cleana cleano cleane cleanf cleanh cleang cleanc
+scrub: cleana cleano cleane cleanf cleanh cleang

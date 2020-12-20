@@ -119,8 +119,9 @@ c
       common /mms/ iexact_trunc,iexact_disc,iexact_ring
       common /des/ cdes,ides,cddes
       common /memry/ lowmem_ux
-      common /constit/ i_nonlin,c_nonlin,snonlin_lim
-      common /reystressmodel/ issglrrw2012,i_sas_rsm
+      common /constit/ i_nonlin,c_nonlin,snonlin_lim,i_tauijs,i_qcr2000,
+     .                 i_qcr2013,i_qcr2013v
+      common /reystressmodel/ issglrrw2012,i_sas_rsm,i_yapterm
 c
       jdim1 = jdim-1
       kdim1 = kdim-1
@@ -291,7 +292,7 @@ c
      .    ((ivmx.eq.5) .and. isar.eq.1) .or. 
      .    (ivmx.eq.6 .and. i_wilcox06.eq.1) .or.
      .    (ivmx.eq.6 .and. i_wilcox98.eq.1) .or.
-     .    ides.ge.2 .or. i_nonlin.ne.0) then
+     .    ides.ge.2 .or. i_nonlin.ne.0 .or. i_tauijs.ne.0) then
           call delv(jdim,kdim,idim,q,sj,sk,si,vol,ux,wk,blank,iover,
      .          qj0,qk0,qi0,bcj,bck,bci,nbl,volj0,volk0,voli0,
      .          maxbl,vormax,ivmax,jvmax,kvmax)
@@ -907,6 +908,10 @@ c          RSM not working in complex mode
             write(bou(nou(1),1),'(''   ...subtracting SAS-like term '',
      +        ''(AIAA-2014-0586)'')')
             end if
+            if (i_yapterm .eq. 1) then
+            nou(1) = min(nou(1)+1,ibufdim)
+            write(bou(nou(1),1),'(''   ...adding Yap term'')')
+            end if
          end if
          if (icyc .le. nfreeze) then
            if (isklton .gt. 0) then
@@ -927,7 +932,7 @@ c          RSM not working in complex mode
      $          ux,
      $          sj,sk,si,vol,volj0,volk0,voli0,q,qj0,qk0,qi0,dtj,vist3d,
      $          level,icyc,sumn,negn,xib2,snk0,x,y,z,nbl,issglrrw2012,
-     $          i_sas_rsm)
+     $          i_sas_rsm,i_yapterm)
          end if
 #   endif
       else if (ivmx .eq. 25) then

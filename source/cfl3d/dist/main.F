@@ -210,7 +210,7 @@ c     DEVELOPER NOTES:
 c
 c     1) Subroutine findmin (module lbcx, used to find the minimum
 c        distance from a surface for use with 1 and 2 eq. turb.
-c        models), key off boundary condition type 2004/14/24/16 (viscous
+c        models), key off boundary condition type 2004/14/24/34/16 (viscous
 c        surface). At the current time, this is the only BC type in
 c        the standard suite of BC types that makes sense to include
 c        in findmin_new. However, in future, if other viscous surface 
@@ -334,7 +334,6 @@ c
       character*80 inpstring
       character*80 bcfiles(mxbcfil)
       character*120 bou(ibufdim,nbuf)
-      character*80 sysfile
       integer n_clcd, nblocks_clcd
       integer, allocatable, dimension(:,:) :: blocks_clcd
 c
@@ -536,10 +535,8 @@ c
       rewind(66)
       rewind(99)
 
-      if (icgns .ne. 1) then
       open(unit=1,file=grid,form='unformatted',status='old')
       open(unit=2,file=restrt,form='unformatted',status='unknown')
-      end if
       open(unit=20,file=pplunge,form='formatted',status='unknown')
       open(unit=21,file=ovrlap,form='unformatted',status='unknown')
       open(unit=22,file=patch,form='unformatted',status='unknown')
@@ -547,8 +544,8 @@ c
 c
 c     remove the stop file if there is one 
 c
-      sysfile = 'rm -f stop'
-      call system(sysfile)
+      open(unit=1234,iostat=istat1,file='stop',status='old')
+      if (istat1 == 0) close(1234, status='delete')
 c
 c***********************************************************************
 c     determine array size requirements

@@ -109,11 +109,12 @@ c
       common /initfac/ scal_ic
       common /plot3dtyp/ ifunct
       common /memry/ lowmem_ux
-      common /constit/ i_nonlin,c_nonlin,snonlin_lim
+      common /constit/ i_nonlin,c_nonlin,snonlin_lim,i_tauijs,i_qcr2000,
+     .                 i_qcr2013,i_qcr2013v
       common /easmlim/ cmulim
       common /easmv/ c10,c11,c2,c3,c4,c5,sigk1,cmuc1,ieasm_type
       common /is_patch/ is_pat(5),ie_pat(5),ipatch1st
-      common /reystressmodel/ issglrrw2012,i_sas_rsm
+      common /reystressmodel/ issglrrw2012,i_sas_rsm,i_yapterm
       common /writestuff/ ifort50write, j_ifort50write, i_ifort50write
       common /sa_options/ i_saneg,i_sanoft2,sa_cw2,sa_cw3,sa_cv1,sa_ct3,
      .                    sa_ct4,sa_cb1,sa_cb2,sa_sigma,sa_karman
@@ -121,8 +122,12 @@ c
      .        i_lam_forcezero
       common /specialtop_kmax1001/ i_specialtop_kmax1001,
      .        a_specialtop_kmax1001,xc_specialtop_kmax1001,
-     .        sig_specialtop_kmax1001,vtp_specialtop_kmax1001
+     .        sig_specialtop_kmax1001,vtp_specialtop_kmax1001,
+     .        wc_specialtop_kmax1001,fac_specialtop_kmax1001,
+     .        cc_specialtop_kmax1001,xerf_specialtop_kmax1001,
+     .        sigerf_specialtop_kmax1001
       common /iupdate/ iupdatemean
+      common /wallvel_2034/ uub_2034,vvb_2034,wwb_2034,vvb_xaxisrot2034
 c
       ititr = 0
       nkey  = 0
@@ -950,13 +955,20 @@ c   will not convect it)
 c
 c   i_specialtop_kmax1001=1 only for particular special BC on 1001
 c   specifying kmax wall velocity in conjunction with BC1001:
-c   v=sig*a*(xc-x)/sig*exp(0.5-((xc-x)/sig)**2)+vtp
+c   v = a*{fac*(xc-x)+(1-fac)}*exp[cc-({(xc-x)/sig}**2)] + 
+c       vtp*{0.5*(1-erf[(x-xerf)/sigerf])}
+c   and wc is for specifying crossflow
       i_specialtop_kmax1001=0
       a_specialtop_kmax1001=0.
       xc_specialtop_kmax1001=0.
-      sig_specialtop_kmax1001=0.
+      sig_specialtop_kmax1001=1.
       vtp_specialtop_kmax1001=0.
-      nkey     = nkey + 5
+      wc_specialtop_kmax1001=0.
+      fac_specialtop_kmax1001=1.0
+      cc_specialtop_kmax1001=0.5
+      xerf_specialtop_kmax1001=100000.
+      sigerf_specialtop_kmax1001=1.e-9
+      nkey     = nkey + 10
 c
 c   SA constants
       sa_cw2=0.3
@@ -972,6 +984,41 @@ c   SA constants
 c
 c   iupdatemean = 0 forces no mean flow update (turbulence still updated)
       iupdatemean=1
+      nkey     = nkey + 1
+c
+c   uub_2034,vvb_2034,wwb_2034 are wall velocities used with bc2034
+c   vvb_xaxisrot2034 is rotational velocity about x-axis with bc2034
+      uub_2034=0.
+      vvb_2034=0.
+      wwb_2034=0.
+      vvb_xaxisrot2034=0.
+      nkey     = nkey + 4
+c
+c   i_tauijs adds turbulence via tauij terms (when set to 1)
+c   NOTE: like regular method, 2/3*rho*k term is currently ignored
+c   Also: not done accurately at boundaries for multiblock cases:
+c   currently one sided; need ux derivs from across boundaries
+c   to be truly correct
+      i_tauijs=0
+      nkey     = nkey + 1
+c
+c   i_qcr2000 turns on QCR2000 (when set to 1)
+c   only works when i_tauijs=1
+      i_qcr2000=0
+      nkey     = nkey + 1
+c
+c   i_qcr2013 turns on QCR2013 (limited) (when set to 1)
+c   only works when i_tauijs=1
+      i_qcr2013=0
+      nkey     = nkey + 1
+c
+c   i_qcr2013v turns on QCR2013-V (when set to 1)
+c   only works when i_tauijs=1
+      i_qcr2013v=0
+      nkey     = nkey + 1
+c
+c   i_yapterm=1 adds Yap-like term to get rid of backbending in RSM
+      i_yapterm=0
       nkey     = nkey + 1
 c
 c*********************************************
@@ -1903,6 +1950,26 @@ c
          lc2 = lc2 +1
          read(inpstr(lc2:lcl),*) realval(1)
          vtp_specialtop_kmax1001 = realval(1)
+      else if (inpstr(lc1:lc2).eq.'wc_specialtop_kmax1001') then
+         lc2 = lc2 +1
+         read(inpstr(lc2:lcl),*) realval(1)
+         wc_specialtop_kmax1001 = realval(1)
+      else if (inpstr(lc1:lc2).eq.'fac_specialtop_kmax1001') then
+         lc2 = lc2 +1
+         read(inpstr(lc2:lcl),*) realval(1)
+         fac_specialtop_kmax1001 = realval(1)
+      else if (inpstr(lc1:lc2).eq.'cc_specialtop_kmax1001') then
+         lc2 = lc2 +1
+         read(inpstr(lc2:lcl),*) realval(1)
+         cc_specialtop_kmax1001 = realval(1)
+      else if (inpstr(lc1:lc2).eq.'xerf_specialtop_kmax1001') then
+         lc2 = lc2 +1
+         read(inpstr(lc2:lcl),*) realval(1)
+         xerf_specialtop_kmax1001 = realval(1)
+      else if (inpstr(lc1:lc2).eq.'sigerf_specialtop_kmax1001') then
+         lc2 = lc2 +1
+         read(inpstr(lc2:lcl),*) realval(1)
+         sigerf_specialtop_kmax1001 = realval(1)
 c
       else if (inpstr(lc1:lc2).eq.'sa_cw2') then
          lc2 = lc2 +1
@@ -1944,6 +2011,43 @@ c
       else if (inpstr(lc1:lc2).eq.'iupdatemean') then
          lc2 = lc2 +1
          read(inpstr(lc2:lcl),*) iupdatemean
+c
+      else if (inpstr(lc1:lc2).eq.'uub_2034') then
+         lc2 = lc2 +1
+         read(inpstr(lc2:lcl),*) realval(1)
+         uub_2034 = realval(1)
+      else if (inpstr(lc1:lc2).eq.'vvb_2034') then
+         lc2 = lc2 +1
+         read(inpstr(lc2:lcl),*) realval(1)
+         vvb_2034 = realval(1)
+      else if (inpstr(lc1:lc2).eq.'wwb_2034') then
+         lc2 = lc2 +1
+         read(inpstr(lc2:lcl),*) realval(1)
+         wwb_2034 = realval(1)
+      else if (inpstr(lc1:lc2).eq.'vvb_xaxisrot2034') then
+         lc2 = lc2 +1
+         read(inpstr(lc2:lcl),*) realval(1)
+         vvb_xaxisrot2034 = realval(1)
+c
+      else if (inpstr(lc1:lc2).eq.'i_tauijs') then
+         lc2 = lc2 +1
+         read(inpstr(lc2:lcl),*) i_tauijs
+c
+      else if (inpstr(lc1:lc2).eq.'i_qcr2000') then
+         lc2 = lc2 +1
+         read(inpstr(lc2:lcl),*) i_qcr2000
+c
+      else if (inpstr(lc1:lc2).eq.'i_qcr2013') then
+         lc2 = lc2 +1
+         read(inpstr(lc2:lcl),*) i_qcr2013
+c
+      else if (inpstr(lc1:lc2).eq.'i_qcr2013v') then
+         lc2 = lc2 +1
+         read(inpstr(lc2:lcl),*) i_qcr2013v
+c
+      else if (inpstr(lc1:lc2).eq.'i_yapterm') then
+         lc2 = lc2 +1
+         read(inpstr(lc2:lcl),*) i_yapterm
 c
       else
 c
